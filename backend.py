@@ -1,5 +1,15 @@
+import logging
+from colorlog import ColoredFormatter
 from easy_sqlite3 import *
 import random
+
+logger = logging.getLogger('stock-bot')
+stream = logging.StreamHandler()
+
+stream.setFormatter(ColoredFormatter("%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"))
+logger.addHandler(stream)
+
+logger.setLevel("INFO")
 
 
 class StockMarket:
