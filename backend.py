@@ -13,7 +13,7 @@ class StockMarket:
                         1000:[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10]}
 
         db = Database("stocks")
-        db.create_table("stock_list", {"stock": STR, "price":INT, "holdings":INT, "market_cap":INT, "history":STR})
+        db.create_table("stock_list", {"stock": "TEXT", "price":INT, "holdings":INT, "market_cap":INT, "history":"TEXT"})
 
         db.close()
 
@@ -71,9 +71,10 @@ class StockMarket:
 
         prices = eval(prices[4])
 
+        n = 120
 
-        if len(prices) > 240:
-            prices = prices[-240:]
+        if len(prices) > n:
+            prices = prices[-n:]
 
         return float(prices[-1] - prices[0])/prices[0]  
 
