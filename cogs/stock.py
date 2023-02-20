@@ -6,15 +6,15 @@ from discord.ext import tasks
 from backend import StockMarket
 import discord
 from matplotlib import pyplot as plt
+import mplcyberpunk
 
 
 class Stock(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.owners = [984245773887766551, 734416913437950011, 940215499764146176, 758957941033402388,
-                       776029514811441152,
-                       837584356988944396]
+        self.owners = [984245773887766551]
         self.stockmarket = StockMarket(self.bot)
+        plt.style.use("cyberpunk")
 
         self.update_stocks.start()
 
@@ -43,16 +43,21 @@ class Stock(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="history", description="View the history of any stock market companies")
-    async def history(self, interaction, company1, company2=None, company3=None, company4=None, company5=None):
+    @app_commands.command(name="graph", description="View the history of any stock market companies")
+    async def graph(self, interaction, company1:str, company2:str=None, company3:str=None, company4:str=None, company5:str=None):
+        n = 1000
+
+        def refactor(his):
+            return his if len(his) < n else his[-n:] # refactor can also have other stuff to be added like skip count
+                
         data = []
+        
         for company in [company1, company2, company3, company4, company5]:
             if company is not None:
-                data.append(self.stockmarket.get_history(company))
+                history = self.stockmarket.get_history(company)
+                data.append(refactor(history))
 
         fig, axs = plt.subplots(1, 1)
-
-        t = [i for i in range(1, 10)]
 
         company_names = [company1]
         for company in [company2, company3, company4, company5]:
@@ -60,20 +65,11 @@ class Stock(commands.Cog):
                 company_names.append(company)
 
         # plot the data
-        for i, (months, counts) in enumerate(data):
-            axs.plot(t, counts, '-o', label=company_names[i])
-
-        ticks = [i for i in range(1, 13)]
-        tick_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May',
-                       'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-        # set the tick locations and labels
-        axs.set_xticks(ticks)
-        axs.set_xticklabels(tick_labels)
+        for i, counts in enumerate(data):
+            axs.plot([i for i in range(1, len(counts)+1)], counts, '-o', label=company_names[i], markersize=1)
 
         # add labels and grid
-        axs.set_xlabel('Month')
-        axs.set_ylabel('Number of Messages')
+        axs.set_ylabel('Price')
         axs.grid(True)
 
         # add a title
@@ -90,14 +86,42 @@ class Stock(commands.Cog):
 
             embed = discord.Embed()
 
-            embed.title = "Monthly Member Activity"
-            embed.description = "Shows the activity of user(s) in a guild on a per month basis."
+            embed.title = "Stock Graph"
+            embed.description = "Shows the graph of the particular stock."
 
             embed.set_image(url="attachment://image.png")
             await interaction.response.send_message(embed=embed, file=discord.File(fp=image_binary, filename="image.png"))
 
         # close the figure
         plt.close(fig)
+
+    @app_commands.command(name="create-account", description="Create a stock market holding account.")
+    async def create_account(self, interaction):
+        if interaction.user.id not in self.owners:
+            await interaction.response.send_message(
+                "What colors are your IMO, NSO, IEO, IIO, IoE, IoS and GK medals this year? Thought so.")
+            return
+        
+        self.stockmarket.create_account(interaction.user.id)
+
+    @app_commands.command(name="buy", description="Buy a stock from the stock market.")
+    @app_commands.describe(stock="The stock you want to buy from the stock market.")
+    @app_commands.describe(amount="How many of the stock you want to buy.")
+    async def buy(self, interaction, stock:str, amount:int):
+
+        if interaction.user.id not in self.owners:
+            await interaction.response.send_message(
+                "What colors are your IMO, NSO, IEO, IIO, IoE, IoS and GK medals this year? Thought so.")
+            return
+        
+        result = self.stockmarket.buy(interaction.user.id, stock, amount)
+        if not result:
+            await interaction.response.send_message(f"No stock named `{stock}`...")
+        elif result == -1:
+            await interaction.response.send_message(f"You do not have enough money to buy x{amount} of `{stock}`...")
+        else:
+            await interaction.response.send_message(f"Bought `{amount}` of the `{stock}` stock! Your balance is `{result}`")
+
 
     # Syncing new commands
     @commands.command()

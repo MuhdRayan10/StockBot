@@ -26,6 +26,7 @@ class StockMarket:
         db.create_table("stock_list",
                         {"stock": "TEXT", "price": INT, "holdings": INT, "market_cap": INT, "history": "TEXT"})
 
+        db.create_table("users", {"user":INT, 'money':INT})
         db.close()
 
     def add_stock(self, stock_name: str, start_price: int):
@@ -57,14 +58,11 @@ class StockMarket:
         for lim in self.increase:
             if lim >= price:
                 limit += lim
-                print(limit)
                 break
 
         limit += 1000 if not limit else 0
 
         price += random.choice(self.increase[limit])
-
-        print(stock, stock_data[1], price)
 
         history = eval(stock_data[4])
         history.append(price)
@@ -80,7 +78,7 @@ class StockMarket:
 
         prices = eval(prices[4])
 
-        n = 120
+        n = 240
 
         if len(prices) > n:
             prices = prices[-n:]
@@ -107,3 +105,43 @@ class StockMarket:
         history = db.select("stock_list", where={"stock": company}, size=1)
         db.close()
         return eval(history[4])
+    
+    def create_account(self, user):
+        db = Database("stocks")
+        db.insert("users", (user, 100))
+
+        db.create_table(f"'{user}", {"stock":"TEXT", "price":INT, "count":INT})
+        db.close()
+
+    def buy(self, user, stock, amount):
+        db = Database("stocks")
+        data = db.select("stock_list", where={"stock": stock}, size=1)
+
+        if not data: return 
+        
+        total_price = data[1] * amount
+        
+        self.create_account(user)
+        user = db.select("users", where={"user":user}, size=1)
+        
+        if user[1] < total_price: return -1
+
+        db.update("stock_list", {"holdings":data[2]+amount, "market_cap":data[3]+total_price}, where={"stock":stock})
+        db.update("users", {"money":user[1]-total_price}, where={"user":user[0]})
+
+        user_table = f"'{user[0]}"
+
+        if db.if_exists(user_table, where={"stock":stock}):
+            stock_data = db.select(user_table, size=1, where={"stock":stock})
+            avg_price = round(((stock_data[1]*stock_data[2]) + total_price)/ (stock_data[2] + amount), 2)
+            
+            db.update(user_table, {"price":avg_price, "count":amount+stock_data[2]}, where={"stock":stock})
+
+        else:
+            db.insert(user_table, (stock, total_price/amount, amount))
+
+        
+            
+        
+
+
