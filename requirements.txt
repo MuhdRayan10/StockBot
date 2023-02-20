@@ -1,0 +1,2 @@
+discord.py==2.1.1
+colorlog==6.7.0

@@ -101,3 +101,9 @@ class StockMarket:
             percentages += f"\n{round(increase * 100, 2)}% {symbol}"
 
         return stocks, prices, percentages
+
+    def get_history(self, company):
+        db = Database("stocks")
+        history = db.select("stock_list", where={"stock": company}, size=1)
+        db.close()
+        return eval(history[4])
