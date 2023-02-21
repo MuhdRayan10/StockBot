@@ -210,6 +210,41 @@ class StockMarket:
             db.insert(user_table, (stock, total_price/amount, amount))
 
         return user[1]-total_price
+    
+    def see_portfolio(self, user):
+        db = Database("stocks")
+        
+        current = db.select("stock_list")
+        user_stocks = db.select(f"_{user}")
+
+        
+        
+        stock_names = [u[0] for u in user_stocks]
+        current = [c for c in current if c[0] in stock_names]
+
+        if not user_stocks:
+            return -1
+        
+        data = []
+        for stock in user_stocks:
+            
+            if not stock[1]: continue
+
+            market = self.corresponding_stock(current, stock[0], db, user)
+
+            if stock[1] == 0: percentage = 0
+            else: percentage = (market[1] - stock[1]) / stock[1]
+
+            percentage = f'`${market[1]-stock[1]}` {round(percentage,2)}% {"🟢" if percentage >= 0 else "🔴"}'
+
+            data.append([f"`[{stock[2]}]` {stock[0]} ", f"`${stock[1]}`", f"`${market[1]}` ({percentage})"])
+
+        db.close()
+
+        return '\n'.join([d[0] for d in data]), '\n'.join([d[1] for d in data]), '\n'.join([d[2] for d in data])
+
+        
+        
 
         
             

@@ -6,7 +6,7 @@ from backend import StockMarket
 import discord
 from matplotlib import pyplot as plt
 import mplcyberpunk
-from mpl_finance import candlestick_ohlc
+#from mpl_finance import candlestick_ohlc
 
 
 class Stock(commands.Cog):
@@ -60,7 +60,7 @@ class Stock(commands.Cog):
                 data.append(refactor(history))
 
         fig, axs = plt.subplots(1, 1)
-        candlestick_ohlc(axs, quotes, width=0.6, colorup='green', colordown='red', alpha=0.8)
+        #candlestick_ohlc(axs, quotes, width=0.6, colorup='green', colordown='red', alpha=0.8)
 
         company_names = [company1]
         for company in [company2, company3, company4, company5]:
@@ -68,8 +68,8 @@ class Stock(commands.Cog):
                 company_names.append(company)
 
         # plot the data
-        # for i, counts in enumerate(data):
-        #     axs.plot([i for i in range(1, len(counts) + 1)], counts, '-o', label=company_names[i], markersize=1)
+        for i, counts in enumerate(data):
+            axs.plot([i for i in range(1, len(counts) + 1)], counts, '-o', label=company_names[i], markersize=1)
 
         # add labels and grid
         axs.set_ylabel('Price')
@@ -159,6 +159,24 @@ class Stock(commands.Cog):
             await interaction.response.send_message(f"Create account first bro")
         else:
             await interaction.response.send_message(f"Sold `{amount}` of the `{stock}` stock! Your balance is `{result}`")
+    
+    @app_commands.command(name="stocks", description="View the portfolio of the person.")
+    async def stocks(self, interaction, user:discord.Member=None):
+        user = user or interaction.user
+
+        result = self.stockmarket.see_portfolio(user.id)
+
+        if result == -1:
+            await interaction.response.send_message(f"No stocks :(")
+            return
+
+        embed = discord.Embed(title=f"{user.name} Stocks")
+
+        fields = ["Stocks", "Buy Price", "Market Price"]
+        for i, field in enumerate(fields):
+            embed.add_field(name=field, value=result[i], inline=True)
+
+        await interaction.response.send_message(embed=embed)
 
     # Syncing new commands
     @commands.command()
