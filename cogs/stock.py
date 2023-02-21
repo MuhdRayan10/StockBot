@@ -12,7 +12,8 @@ import mplcyberpunk
 class Stock(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.owners = [984245773887766551]
+        self.owners = [984245773887766551, 964523363559170088, 734416913437950011, 758957941033402388, 761116517307252746,
+                       656409780918812683, 775260152831279106]
         self.stockmarket = StockMarket(self.bot)
         plt.style.use("cyberpunk")
 
@@ -103,6 +104,7 @@ class Stock(commands.Cog):
             return
         
         self.stockmarket.create_account(interaction.user.id)
+        await interaction.response.send_message("Done", ephemeral=True)
 
     @app_commands.command(name="buy", description="Buy a stock from the stock market.")
     @app_commands.describe(stock="The stock you want to buy from the stock market.")
@@ -118,10 +120,42 @@ class Stock(commands.Cog):
         if not result:
             await interaction.response.send_message(f"No stock named `{stock}`...")
         elif result == -1:
-            await interaction.response.send_message(f"You do not have enough money to buy x{amount} of `{stock}`...")
+            await interaction.response.send_message(f"You do not have enough money to buy `x{amount}` of `{stock}`...")
         else:
             await interaction.response.send_message(f"Bought `{amount}` of the `{stock}` stock! Your balance is `{result}`")
 
+    @app_commands.command(name="balance", description="See your balance and trading account details.")
+    async def balance(self, interaction, user:discord.Member=None):
+        
+        user = user or interaction.user
+        data = self.stockmarket.get_balance(user.id)
+        embed = discord.Embed(title=f"{user.name} Balance")
+        embed.add_field(name="Balance", value=f"`${data[0]}`")
+        embed.add_field(name="Trading", value=f"`${data[1]}`")
+        embed.add_field(name="Invested", value=f"`${data[2]}`")
+        embed.add_field(name="Change", value=f"`{data[3]}`    {data[4]}% {data[5]}", inline=True)
+
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="sell", description="Sell a stock from the stock market.")
+    @app_commands.describe(stock="The stock you want to sell to the stock market.")
+    @app_commands.describe(amount="How many of the stock you want to sell.")
+    async def sell(self, interaction, stock:str, amount:int):
+
+        if interaction.user.id not in self.owners:
+            await interaction.response.send_message(
+                "What colors are your IMO, NSO, IEO, IIO, IoE, IoS and GK medals this year? Thought so.")
+            return
+        
+        result = self.stockmarket.sell(interaction.user.id, stock, amount)
+        if not result:
+            await interaction.response.send_message(f"No stock named `{stock}`...")
+        elif result == -1:
+            await interaction.response.send_message(f"You do not have enough stocks to sell `x{amount}` of `{stock}`...")
+        elif result == -2:
+            await interaction.response.send_message(f"Create account first bro")
+        else:
+            await interaction.response.send_message(f"Sold `{amount}` of the `{stock}` stock! Your balance is `{result}`")
 
     # Syncing new commands
     @commands.command()
