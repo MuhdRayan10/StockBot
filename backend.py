@@ -122,6 +122,9 @@ class StockMarket:
         db = Database("stocks")
         data = db.select("stock_list", where={"stock": stock}, size=1)
 
+        if amount <= 0:
+            return -3
+
         if not data:
             return 
         
@@ -130,9 +133,9 @@ class StockMarket:
         user = db.select("users", where={"user":user}, size=1)
 
         user_table = f"_{user[0]}"
-        if db.if_exists(user_table, where={"stock":stock}):
-            user_stock = db.select(user_table, where={"stock":stock}, size=1)
-        else:
+        user_stock = db.select(user_table, where={"stock":stock}, size=1)
+
+        if not user_stock:
             return -2
         
         if user_stock[2] < amount: return -1
@@ -147,7 +150,7 @@ class StockMarket:
         
         db.update(user_table, {"price":avg_price, "count":user_stock[2]-amount}, where={"stock":stock})
 
-        return user[1]+total_price
+        return user[1]+total_price, data[1]
     
     def corresponding_stock(self, stocks, target, db, user):
         for stock in stocks:
@@ -163,7 +166,10 @@ class StockMarket:
         u_stocks = db.select(f"_{user}")
         stocks = db.select("stock_list")
 
-    
+        if not data:
+            db.close()
+            return
+
         val = 0
         trading_val = 0
         for stock in u_stocks:
@@ -185,6 +191,9 @@ class StockMarket:
     def buy(self, user, stock, amount):
         db = Database("stocks")
         data = db.select("stock_list", where={"stock": stock}, size=1)
+
+        if amount <= 0:
+            return -3
 
         if not data:
             return 
@@ -209,7 +218,7 @@ class StockMarket:
         else:
             db.insert(user_table, (stock, total_price/amount, amount))
 
-        return user[1]-total_price
+        return user[1]-total_price, data[1]
     
     def see_portfolio(self, user):
         db = Database("stocks")
@@ -217,7 +226,6 @@ class StockMarket:
         current = db.select("stock_list")
         user_stocks = db.select(f"_{user}")
 
-        
         
         stock_names = [u[0] for u in user_stocks]
         current = [c for c in current if c[0] in stock_names]
@@ -233,9 +241,9 @@ class StockMarket:
             market = self.corresponding_stock(current, stock[0], db, user)
 
             if stock[1] == 0: percentage = 0
-            else: percentage = (market[1] - stock[1]) / stock[1]
+            else: percentage = ((market[1] - stock[1]) / stock[1]) * 100
 
-            percentage = f'`${market[1]-stock[1]}` {round(percentage,2)}% {"🟢" if percentage >= 0 else "🔴"}'
+            percentage = f'`${round((market[1]-round(stock[1], 2))*stock[2], 2)}` {round(percentage,2)}% {"🟢" if percentage >= 0 else "🔴"}'
 
             data.append([f"`[{stock[2]}]` {stock[0]} ", f"`${stock[1]}`", f"`${market[1]}` ({percentage})"])
 

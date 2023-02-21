@@ -12,8 +12,9 @@ import mplcyberpunk
 class Stock(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.owners = [984245773887766551, 964523363559170088, 734416913437950011, 758957941033402388, 761116517307252746,
-                       656409780918812683, 775260152831279106]
+        self.owners = [984245773887766551, 964523363559170088, 734416913437950011, 758957941033402388,
+                       656409780918812683, 775260152831279106, 625265223250608138, 1043772011182301225,
+                       761116517307252746]
         self.stockmarket = StockMarket(self.bot)
         plt.style.use("ggplot")
 
@@ -27,7 +28,11 @@ class Stock(commands.Cog):
     async def add_stock(self, interaction, name: str, price: int):
         if interaction.user.id not in self.owners:
             await interaction.response.send_message(
-                "What colors are your IMO, NSO, IEO, IIO, IoE, IoS and GK medals this year? Thought so.")
+                "What colors are your- No, I won't say it anymore :)")
+            return
+
+        if price <= 0:
+            await interaction.response.send_message("Bruh no u")
             return
 
         self.stockmarket.add_stock(name, price)
@@ -103,7 +108,7 @@ class Stock(commands.Cog):
     async def create_account(self, interaction):
         if interaction.user.id not in self.owners:
             await interaction.response.send_message(
-                "What colors are your IMO, NSO, IEO, IIO, IoE, IoS and GK medals this year? Thought so.")
+                "What colors are your- No, I won't say it anymore :)")
             return
 
         self.stockmarket.create_account(interaction.user.id)
@@ -116,7 +121,7 @@ class Stock(commands.Cog):
 
         if interaction.user.id not in self.owners:
             await interaction.response.send_message(
-                "What colors are your IMO, NSO, IEO, IIO, IoE, IoS and GK medals this year? Thought so.")
+                "What colors are your- No, I won't say it anymore :)")
             return
 
         result = self.stockmarket.buy(interaction.user.id, stock, amount)
@@ -124,8 +129,10 @@ class Stock(commands.Cog):
             await interaction.response.send_message(f"No stock named `{stock}`...")
         elif result == -1:
             await interaction.response.send_message(f"You do not have enough money to buy `x{amount}` of `{stock}`...")
+        elif result == -3:
+            await interaction.response.send_message(f"You think you're smart, don't you?")
         else:
-            await interaction.response.send_message(f"Bought `{amount}` of the `{stock}` stock! Your balance is `{result}`")
+            await interaction.response.send_message(f"Bought `{amount}` of the `{stock}` stock at the rate `{result[1]}`! Your balance is `{result[0]}`")
 
     @app_commands.command(name="balance", description="See your balance and trading account details.")
     async def balance(self, interaction, user:discord.Member=None):
@@ -137,6 +144,7 @@ class Stock(commands.Cog):
         embed.add_field(name="Trading", value=f"`${data[1]}`")
         embed.add_field(name="Invested", value=f"`${data[2]}`")
         embed.add_field(name="Change", value=f"`{data[3]}`    {data[4]}% {data[5]}", inline=True)
+        embed.add_field(name="Net Worth", value=f"`${data[0]+data[1]}`")
 
         await interaction.response.send_message(embed=embed)
 
@@ -147,7 +155,7 @@ class Stock(commands.Cog):
 
         if interaction.user.id not in self.owners:
             await interaction.response.send_message(
-                "What colors are your IMO, NSO, IEO, IIO, IoE, IoS and GK medals this year? Thought so.")
+                "What colors are your- No, I won't say it anymore :)")
             return
         
         result = self.stockmarket.sell(interaction.user.id, stock, amount)
@@ -157,8 +165,10 @@ class Stock(commands.Cog):
             await interaction.response.send_message(f"You do not have enough stocks to sell `x{amount}` of `{stock}`...")
         elif result == -2:
             await interaction.response.send_message(f"Create account first bro")
+        elif result == -3:
+            await interaction.response.send_message(f"You think you're smart, don't you?")
         else:
-            await interaction.response.send_message(f"Sold `{amount}` of the `{stock}` stock! Your balance is `{result}`")
+            await interaction.response.send_message(f"Sold `{amount}` of the `{stock}` stock at the rate `{result[1]}`! Your balance is `{result[0]}`")
     
     @app_commands.command(name="stocks", description="View the portfolio of the person.")
     async def stocks(self, interaction, user:discord.Member=None):
