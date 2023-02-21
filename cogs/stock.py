@@ -6,6 +6,7 @@ from backend import StockMarket
 import discord
 from matplotlib import pyplot as plt
 import mplcyberpunk
+from mpl_finance import candlestick_ohlc
 
 
 class Stock(commands.Cog):
@@ -13,7 +14,7 @@ class Stock(commands.Cog):
         self.bot = bot
         self.owners = [984245773887766551]
         self.stockmarket = StockMarket(self.bot)
-        plt.style.use("cyberpunk")
+        plt.style.use("ggplot")
 
         self.update_stocks.start()
 
@@ -58,6 +59,7 @@ class Stock(commands.Cog):
                 data.append(refactor(history))
 
         fig, axs = plt.subplots(1, 1)
+        candlestick_ohlc(axs, quotes, width=0.6, colorup='green', colordown='red', alpha=0.8)
 
         company_names = [company1]
         for company in [company2, company3, company4, company5]:
@@ -65,8 +67,8 @@ class Stock(commands.Cog):
                 company_names.append(company)
 
         # plot the data
-        for i, counts in enumerate(data):
-            axs.plot([i for i in range(1, len(counts) + 1)], counts, '-o', label=company_names[i], markersize=1)
+        # for i, counts in enumerate(data):
+        #     axs.plot([i for i in range(1, len(counts) + 1)], counts, '-o', label=company_names[i], markersize=1)
 
         # add labels and grid
         axs.set_ylabel('Price')
