@@ -110,7 +110,7 @@ class StockMarket:
         history = db.select("stock_list", where={"stock": company}, size=1)
         db.close()
         return eval(history[4])
-    
+
     def create_account(self, user):
         db = Database("stocks")
         db.insert("users", (user, 5000))
