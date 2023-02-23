@@ -22,36 +22,44 @@ class StockMarket:
                          500: [1, 2, 3, 4, 5, 6, 0, 0, -1, -2, -3, -4, -5, -6],
                          1000: [1, 2, 3, 4, 5, 6, 7, 0, 0, -1, -2, -3, -4, -5, -6, -7]}
 
-        db = Database("stocks")
-        db.create_table("stock_list",
+        self.extra_stocks = ["Microsoft", "Google", "Amazon.com", "Tesla", "NVIDIA", "Walmart", 
+                             "Mastercard Inc", "Home Depot", "CocaCola", "Alibaba", "PepsiCo", 
+                             "Pfizer", "Oracle", "McDonalds", "Nike", "Adidas", "Toyota"]
+
+
+        self.db = Database("stocks")
+        self.db.create_table("stock_list",
                         {"stock": "TEXT", "price": INT, "holdings": INT, "market_cap": INT, "history": "TEXT"})
 
-        db.create_table("users", {"user":INT, 'money':INT})
-        db.close()
+        self.db.create_table("users", {"user":INT, 'money':INT})
+        
+        self.db.create_table("limits", {"user":INT, 'stock':"TEXT", 'amount':INT, 'price':INT})
+        self.db.create_table("stop_loss", {"user":INT, 'stock':"TEXT", 'amount':INT, 'price':INT})
+        
 
     def add_stock(self, stock_name: str, start_price: int):
 
-        db = Database("stocks")
 
-        if db.if_exists("stock_list", where={"stock": stock_name}):
-            db.close()
-            return
+        if self.db.if_exists("stock_list", where={"stock": stock_name}):
+            
+            return -1
 
-        db.insert("stock_list", {"stock": stock_name, "price": start_price, "holdings": 0, "market_cap": 0,
+        self.db.insert("stock_list", {"stock": stock_name, "price": start_price, "holdings": 0, "market_cap": 0,
                                  "history": f"[{start_price}]"})
-        db.close()
+        
 
     def update_stocks(self):
-        db = Database("stocks")
-        stock_data = db.select("stock_list")
+        stock_data = self.db.select("stock_list")
 
         for data in stock_data:
             self.update_stock_price(data[0])
 
     def update_stock_price(self, stock):
-        db = Database("stocks")
-        stock_data = db.select("stock_list", where={"stock": stock}, size=1)
+        stock_data = self.db.select("stock_list", where={"stock": stock}, size=1)
 
+        limits = self.db.select("limits", where={"stock": stock})
+        stop_loss = self.db.select("stop_loss", where={"stock": stock})
+        
         price = stock_data[1]
 
         limit = 0
@@ -64,21 +72,36 @@ class StockMarket:
 
         price += random.choice(self.increase[limit])
 
-        if price < 0:
-            db.delete("stock_list", where={"stock":stock})
+        if price <= 0:
+            self.db.delete("stock_list", where={"stock":stock})
+            self.erase_stock(stock)
+            result, tries = -1, 0
+            while result == -1 and tries <= 20:
+                result = self.add_stock(random.choice(self.extra_stocks), 50)
             return
 
+        for lim in limits:
+            if lim[3] <= price:
+                self.sell(lim[0], lim[1], lim[2])
+
+                self.db.delete("limits", where={"user":lim[0], "stock":lim[1], "amount":lim[2], "price":lim[3]})
+
+        for lo in stop_loss:
+            print(lo)
+            if lo[3] >= price:
+                self.sell(lo[0], lo[1], lo[2])
+
+                self.db.delete("stop_loss", where={"user":lo[0], "stock":lo[1], "amount":lo[2], "price":lo[3]})
+            
         history = eval(stock_data[4])
         history.append(price)
 
-        db.update("stock_list", {"price": price, "market_cap": price * stock_data[2], "history": repr(history)},
+        self.db.update("stock_list", {"price": price, "market_cap": price * stock_data[2], "history": repr(history)},
                   where={"stock": stock})
-        db.close()
+          
 
-        db.close()
-
-    def percentage(self, stock, db):
-        prices = db.select("stock_list", where={"stock": stock[0]}, size=1)
+    def percentage(self, stock):
+        prices = self.db.select("stock_list", where={"stock": stock[0]}, size=1)
 
         prices = eval(prices[4])
 
@@ -91,13 +114,12 @@ class StockMarket:
         return float(prices[-1] - cp) / cp
 
     def get_stocks(self):
-        db = Database("stocks")
 
-        data = db.select("stock_list")
+        data = self.db.select("stock_list")
 
         stocks, prices, percentages = "", "", ""
         for stock in data:
-            increase = round(self.percentage(stock, db), 2)
+            increase = round(self.percentage(stock), 2)
             symbol = "🟢" if increase >= 0 else "🔴"
             stocks += f"\n{stock[0]}"
             prices += f"\n${stock[1]}"
@@ -106,21 +128,21 @@ class StockMarket:
         return stocks, prices, percentages
 
     def get_history(self, company):
-        db = Database("stocks")
-        history = db.select("stock_list", where={"stock": company}, size=1)
-        db.close()
+        history = self.db.select("stock_list", where={"stock": company}, size=1)
+        
         return eval(history[4])
 
     def create_account(self, user):
-        db = Database("stocks")
-        db.insert("users", (user, 5000))
 
-        db.create_table(f"_{user}", {"stock":"TEXT", "price":INT, "count":INT})
-        db.close()
+        if self.db.if_exists("users", where={"user":user}):
+            return -1
+        self.db.insert("users", (user, 5000))
+
+        self.db.create_table(f"_{user}", {"stock":"TEXT", "price":INT, "count":INT})
+        
 
     def sell(self, user, stock, amount):
-        db = Database("stocks")
-        data = db.select("stock_list", where={"stock": stock}, size=1)
+        data = self.db.select("stock_list", where={"stock": stock}, size=1)
 
         if amount <= 0:
             return -3
@@ -130,56 +152,57 @@ class StockMarket:
         
         total_price = data[1] * amount
         
-        user = db.select("users", where={"user":user}, size=1)
+        user = self.db.select("users", where={"user":user}, size=1)
 
         user_table = f"_{user[0]}"
-        user_stock = db.select(user_table, where={"stock":stock}, size=1)
+        user_stock = self.db.select(user_table, where={"stock":stock}, size=1)
 
         if not user_stock:
             return -2
         
         if user_stock[2] < amount: return -1
         
-        db.update("stock_list", {"holdings":data[2]-amount, "market_cap":data[3]-total_price}, where={"stock":stock})
-        db.update("users", {"money":user[1]+total_price}, where={"user":user[0]})
+        self.db.update("stock_list", {"holdings":data[2]-amount, "market_cap":data[3]-total_price}, where={"stock":stock})
+        self.db.update("users", {"money":user[1]+total_price}, where={"user":user[0]})
 
-        if (user_stock[2] - amount) == 0:
-            avg_price = 0
+        if (user_stock[2] - amount) == 0:  
+            self.db.delete(user_table, where={"stock":stock})
         else:
             avg_price = (user_stock[1] * user_stock[2]) - total_price / (user_stock[2] - amount)
-        
-        db.update(user_table, {"price":avg_price, "count":user_stock[2]-amount}, where={"stock":stock})
+            self.db.update(user_table, {"price":round(avg_price, 2), "count":user_stock[2]-amount}, where={"stock":stock})
 
+            
         return user[1]+total_price, data[1]
     
-    def corresponding_stock(self, stocks, target, db, user):
+    def corresponding_stock(self, stocks, target, user, delete=True):
         for stock in stocks:
             if stock[0] == target:
                 return stock
         
-        db.delete(f"_{user}", where={"stock":stock[0]})
+        if delete:
+            self.db.delete(f"_{user}", where={"stock":target})
+            self.erase_stock(target)
 
     def get_balance(self, user):
-        db = Database("stocks")
-        data = db.select("users", where={"user":user}, size=1)
+        data = self.db.select("users", where={"user":user}, size=1)
 
-        u_stocks = db.select(f"_{user}")
-        stocks = db.select("stock_list")
+        u_stocks = self.db.select(f"_{user}")
+        stocks = self.db.select("stock_list")
 
         if not data:
-            db.close()
+            
             return
 
         val = 0
         trading_val = 0
         for stock in u_stocks:
             val += stock[1] * stock[2] 
-            current = self.corresponding_stock(stocks, stock[0], db, user)
+            current = self.corresponding_stock(stocks, stock[0], user)
 
             if current:
                 trading_val += stock[2] * current[1] 
 
-        db.close()
+        
 
         if val == 0:
             percentage = 0
@@ -188,9 +211,8 @@ class StockMarket:
         
         return data[1], trading_val, val, trading_val-val, percentage, "🟢" if percentage >= 0 else "🔴"
 
-    def buy(self, user, stock, amount):
-        db = Database("stocks")
-        data = db.select("stock_list", where={"stock": stock}, size=1)
+    def buy(self, user, stock, amount, limit):
+        data = self.db.select("stock_list", where={"stock": stock}, size=1)
 
         if amount <= 0:
             return -3
@@ -200,31 +222,36 @@ class StockMarket:
         
         total_price = data[1] * amount
         
-        user = db.select("users", where={"user":user}, size=1)
+        user = self.db.select("users", where={"user":user}, size=1)
         
         if user[1] < total_price: return -1
 
-        db.update("stock_list", {"holdings":data[2]+amount, "market_cap":data[3]+total_price}, where={"stock":stock})
-        db.update("users", {"money":user[1]-total_price}, where={"user":user[0]})
+        self.db.update("stock_list", {"holdings":data[2]+amount, "market_cap":data[3]+total_price}, where={"stock":stock})
+        self.db.update("users", {"money":user[1]-total_price}, where={"user":user[0]})
 
         user_table = f"_{user[0]}"
 
-        if db.if_exists(user_table, where={"stock":stock}):
-            stock_data = db.select(user_table, size=1, where={"stock":stock})
+        if self.db.if_exists(user_table, where={"stock":stock}):
+            stock_data = self.db.select(user_table, size=1, where={"stock":stock})
             avg_price = round(((stock_data[1]*stock_data[2]) + total_price)/ (stock_data[2] + amount), 2)
             
-            db.update(user_table, {"price":avg_price, "count":amount+stock_data[2]}, where={"stock":stock})
+            self.db.update(user_table, {"price":avg_price, "count":amount+stock_data[2]}, where={"stock":stock})
 
         else:
-            db.insert(user_table, (stock, total_price/amount, amount))
+            self.db.insert(user_table, (stock, total_price/amount, amount))
+
+        # Adding the limit thingy 
+        if limit:
+            self.db.insert("limits" if data[1] <= limit else "stop_loss", (user[0], stock, amount, limit))
+
+        
 
         return user[1]-total_price, data[1]
     
     def see_portfolio(self, user):
-        db = Database("stocks")
         
-        current = db.select("stock_list")
-        user_stocks = db.select(f"_{user}")
+        current = self.db.select("stock_list")
+        user_stocks = self.db.select(f"_{user}")
 
         
         stock_names = [u[0] for u in user_stocks]
@@ -238,7 +265,7 @@ class StockMarket:
             
             if not stock[1]: continue
 
-            market = self.corresponding_stock(current, stock[0], db, user)
+            market = self.corresponding_stock(current, stock[0], user)
 
             if stock[1] == 0: percentage = 0
             else: percentage = ((market[1] - stock[1]) / stock[1]) * 100
@@ -247,9 +274,40 @@ class StockMarket:
 
             data.append([f"`[{stock[2]}]` {stock[0]} ", f"`${stock[1]}`", f"`${market[1]}` ({percentage})"])
 
-        db.close()
+        
 
         return '\n'.join([d[0] for d in data]), '\n'.join([d[1] for d in data]), '\n'.join([d[2] for d in data])
+
+    def erase_stock(self, stock):
+        tables = self.db.get_tables()
+
+        for table in tables:
+            if table.startswith("_"):
+                self.db.delete(table, where={"stock":stock})
+
+    def leaderboard(self):
+        users = self.db.select("users")
+        stock_list = self.db.select("stock_list")
+
+        riches = []
+
+        for user in users:
+            balance = user[1]
+
+            u_list = self.db.select(f"_{user[0]}")
+            for stock in u_list:
+                current = self.corresponding_stock(stock_list, stock, user, delete=False)
+                if current:
+                    balance += current[1] * stock[2]
+    
+            riches.append([user[0], round(balance, 2)])
+
+        
+        riches.sort(key=lambda x: x[1], reverse=True)
+
+        return riches
+
+        
 
         
         

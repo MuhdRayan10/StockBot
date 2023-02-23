@@ -15,9 +15,12 @@ import mplcyberpunk
 class Stock(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.owners = [984245773887766551, 964523363559170088, 734416913437950011, 758957941033402388,
+        self.testers = [984245773887766551, 964523363559170088, 734416913437950011, 758957941033402388,
                        656409780918812683, 775260152831279106, 625265223250608138, 1043772011182301225,
                        761116517307252746]
+
+        self.owners = [984245773887766551]
+        self.premium = [984245773887766551, 656409780918812683]
         self.stockmarket = StockMarket(self.bot)
         plt.style.use("ggplot")
 
@@ -95,7 +98,7 @@ class Stock(commands.Cog):
     @app_commands.command(name="graph", description="View the history of any stock market companies")
     async def graph(self, interaction, company1: str, company2: str = None, company3: str = None, company4: str = None,
                     company5: str = None):
-        n = 1000
+        n = 750
 
         def refactor(his):
             return his if len(his) < n else his[-n:]  # refactor can also have other stuff to be added like skip count
@@ -117,7 +120,7 @@ class Stock(commands.Cog):
 
         # plot the data
         for i, counts in enumerate(data):
-            axs.plot([i for i in range(1, len(counts) + 1)], counts, '-o', label=company_names[i], markersize=1)
+            axs.plot([i for i in range(1, len(counts) + 1)], counts, '-o', label=company_names[i], markersize=0)
 
         # add labels and grid
         axs.set_ylabel('Price')
@@ -149,25 +152,26 @@ class Stock(commands.Cog):
 
     @app_commands.command(name="create-account", description="Create a stock market holding account.")
     async def create_account(self, interaction):
-        if interaction.user.id not in self.owners:
-            await interaction.response.send_message(
-                "What colors are your- No, I won't say it anymore :)")
-            return
 
-        self.stockmarket.create_account(interaction.user.id)
-        await interaction.response.send_message("Done", ephemeral=True)
+        result = self.stockmarket.create_account(interaction.user.id)
+
+        if result == -1:
+            await interaction.response.send_message("Already registered...")
+        else:
+            await interaction.response.send_message("Done")
 
     @app_commands.command(name="buy", description="Buy a stock from the stock market.")
     @app_commands.describe(stock="The stock you want to buy from the stock market.")
     @app_commands.describe(amount="How many of the stock you want to buy.")
-    async def buy(self, interaction, stock: str, amount: int):
+    async def buy(self, interaction, stock: str, amount: int, limit:int=None):
 
-        if interaction.user.id not in self.owners:
-            await interaction.response.send_message(
-                "What colors are your- No, I won't say it anymore :)")
-            return
+        if limit is not None:
+            if interaction.user.id not in self.premium:
+                await interaction.response.send_message("Hey, you ain't premium-", ephemeral=True)
+                return
+            
 
-        result = self.stockmarket.buy(interaction.user.id, stock, amount)
+        result = self.stockmarket.buy(interaction.user.id, stock, amount, limit)
         if not result:
             await interaction.response.send_message(f"No stock named `{stock}`...")
         elif result == -1:
@@ -195,23 +199,20 @@ class Stock(commands.Cog):
     @app_commands.describe(stock="The stock you want to sell to the stock market.")
     @app_commands.describe(amount="How many of the stock you want to sell.")
     async def sell(self, interaction, stock:str, amount:int):
-
-        if interaction.user.id not in self.owners:
-            await interaction.response.send_message(
-                "What colors are your- No, I won't say it anymore :)")
-            return
         
+        await interaction.response.defer()
+
         result = self.stockmarket.sell(interaction.user.id, stock, amount)
         if not result:
-            await interaction.response.send_message(f"No stock named `{stock}`...")
+            await interaction.followup.send(f"No stock named `{stock}`...")
         elif result == -1:
-            await interaction.response.send_message(f"You do not have enough stocks to sell `x{amount}` of `{stock}`...")
+            await interaction.followup.send(f"You do not have enough stocks to sell `x{amount}` of `{stock}`...")
         elif result == -2:
-            await interaction.response.send_message(f"Create account first bro")
+            await interaction.followup.send(f"Create account first bro")
         elif result == -3:
-            await interaction.response.send_message(f"You think you're smart, don't you?")
+            await interaction.followup.send(f"You think you're smart, don't you?")
         else:
-            await interaction.response.send_message(f"Sold `{amount}` of the `{stock}` stock at the rate `{result[1]}`! Your balance is `{result[0]}`")
+            await interaction.followup.send(f"Sold `{amount}` of the `{stock}` stock at the rate `{result[1]}`! Your balance is `{result[0]}`")
     
     @app_commands.command(name="stocks", description="View the portfolio of the person.")
     async def stocks(self, interaction, user:discord.Member=None):
@@ -230,6 +231,32 @@ class Stock(commands.Cog):
             embed.add_field(name=field, value=result[i], inline=True)
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="give-money", description="Give money to the person")
+    async def give_money(self, interaction, user:discord.Member, amount:int):
+        
+        self.stockmarket.give_money(user.id, amount, interaction.user.id)
+        
+        await interaction.response.send_message(f"Sent `${amount}` to `{user.name}`")
+
+    @app_commands.command(name="topinvestors", description="Shows the top 10 investors of the server.")
+    async def topinvestors(self, interaction):
+        
+        await interaction.response.defer()
+
+        users = self.stockmarket.leaderboard()
+
+        user_names, net = "", ""
+        for user in users:
+            u = await self.bot.fetch_user(user[0])
+            user_names += f"\n{u.name}"
+            net += f"\n`${user[1]}`"
+
+        embed = discord.Embed(title="Top 10 Investors", description="The richest of the rich")
+        embed.add_field(name="Name", value=user_names)
+        embed.add_field(name="Net Worth", value=net)
+
+        await interaction.followup.send(embed=embed)
 
     # Syncing new commands
     @commands.command()
