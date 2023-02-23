@@ -26,37 +26,27 @@ class Stock(commands.Cog):
 
         self.update_stocks.start()
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("Cog: Stock.py Loaded")
-
-        # get the message ids from temp.json
-
-        while True:
-            data = self.stockmarket.get_stocks()
-            embed = discord.Embed(title="Stock Market", description="The SRG Stock Market")
-            embed.add_field(name="Stocks", value=data[0])
-            embed.add_field(name="Prices", value=data[1])
-            embed.add_field(name="Change", value=data[2])
-
-            # get the channel
-            guild = self.bot.get_guild(880368659858616321)
-            channel = guild.get_channel(734416913437950012)
-
-            # get the last posted message in channel
-            try:
-                last_message = (await channel.history(limit=1).flatten())[0]
-                await last_message.edit(embed=embed)
-            except:
-                continue
-            # edit the message
-            
-            await asyncio.sleep(15)
-
 
     @tasks.loop(seconds=15)
     async def update_stocks(self):
         self.stockmarket.update_stocks()
+
+        data = self.stockmarket.get_stocks()
+        embed = discord.Embed(title="Stock Market", description="The SRG Stock Market")
+        embed.add_field(name="Stocks", value=data[0])
+        embed.add_field(name="Prices", value=data[1])
+        embed.add_field(name="Change", value=data[2])
+
+        # get the channel
+        guild = self.bot.get_guild(880368659858616321)
+        channel = guild.get_channel(734416913437950012)
+
+        try:
+            last_message = (await channel.history(limit=1).flatten())[0]
+            print(last_message)
+            await last_message.edit(embed=embed)
+        except Exception as e:
+            print(e)
 
     @app_commands.command(name="add-stock", description="Create stock")
     async def add_stock(self, interaction, name: str, price: int):
