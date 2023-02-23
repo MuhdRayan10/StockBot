@@ -1,4 +1,7 @@
+import asyncio
 import io
+import json
+
 from discord.ext import commands
 from discord import app_commands
 from discord.ext import tasks
@@ -19,6 +22,34 @@ class Stock(commands.Cog):
         plt.style.use("ggplot")
 
         self.update_stocks.start()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print("Cog: Stock.py Loaded")
+
+        # get the message ids from temp.json
+
+        while True:
+            data = self.stockmarket.get_stocks()
+            embed = discord.Embed(title="Stock Market", description="The SRG Stock Market")
+            embed.add_field(name="Stocks", value=data[0])
+            embed.add_field(name="Prices", value=data[1])
+            embed.add_field(name="Change", value=data[2])
+
+            # get the channel
+            guild = self.bot.get_guild(880368659858616321)
+            channel = guild.get_channel(734416913437950012)
+
+            # get the last posted message in channel
+            try:
+                last_message = (await channel.history(limit=1).flatten())[0]
+                await last_message.edit(embed=embed)
+            except:
+                continue
+            # edit the message
+            
+            await asyncio.sleep(15)
+
 
     @tasks.loop(seconds=15)
     async def update_stocks(self):
@@ -48,6 +79,18 @@ class Stock(commands.Cog):
         embed.add_field(name="Change", value=data[2])
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="sendembed", description="Send a embed which auto-updates every 15s")
+    async def sendembed(self, interaction):
+        embed = discord.Embed(title="Stock Market", description="The SRG Stock Market")
+        data = self.stockmarket.get_stocks()
+        embed.add_field(name="Stocks", value=data[0])
+        embed.add_field(name="Prices", value=data[1])
+        embed.add_field(name="Change", value=data[2])
+
+        await interaction.response.send_message("Sent the embed", ephemeral=True)
+        await interaction.channel.send(embed=embed)
+
 
     @app_commands.command(name="graph", description="View the history of any stock market companies")
     async def graph(self, interaction, company1: str, company2: str = None, company3: str = None, company4: str = None,
