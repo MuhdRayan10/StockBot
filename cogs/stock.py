@@ -39,10 +39,10 @@ class Stock(commands.Cog):
 
         # get the channel
         guild = self.bot.get_guild(880368659858616321)
-        channel = guild.get_channel(734416913437950012)
+        channel = guild.get_channel(1078325948006551642)
 
         try:
-            last_message = (await channel.history(limit=1).flatten())[0]
+            last_message = (await channel.history(limit=1))[0]
             print(last_message)
             await last_message.edit(embed=embed)
         except Exception as e:
