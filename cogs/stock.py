@@ -9,7 +9,6 @@ from backend import StockMarket
 import discord
 from matplotlib import pyplot as plt
 import mplcyberpunk
-#from mpl_finance import candlestick_ohlc
 
 
 class Stock(commands.Cog):
