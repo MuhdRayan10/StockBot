@@ -73,13 +73,16 @@ class StockMarket:
         price += random.choice(self.increase[limit])
 
         if price <= 0:
-            self.db.delete("stock_list", where={"stock":stock})
-            self.erase_stock(stock)
-            result, tries = -1, 0
-            while result == -1 and tries <= 20:
-                result = self.add_stock(random.choice(self.extra_stocks), 50)
-            return
-
+            try:
+                
+                self.db.execute(f'DELETE FROM stock_list WHERE stock="{stock}"')
+                self.erase_stock(stock)
+                result, tries = -1, 0
+                while result == -1 and tries <= 20:
+                    result = self.add_stock(random.choice(self.extra_stocks), 50)
+                return
+            except: 
+                print(stock)
         for lim in limits:
             if lim[3] <= price:
                 self.sell(lim[0], lim[1], lim[2])
@@ -166,7 +169,8 @@ class StockMarket:
         self.db.update("users", {"money":user[1]+total_price}, where={"user":user[0]})
 
         if (user_stock[2] - amount) == 0:  
-            self.db.delete(user_table, where={"stock":stock})
+            self.db.execute(f'DELETE FROM {user_table} WHERE stock="{stock}"', )
+            self.db.commit()
         else:
             avg_price = (user_stock[1] * user_stock[2]) - total_price / (user_stock[2] - amount)
             self.db.update(user_table, {"price":round(avg_price, 2), "count":user_stock[2]-amount}, where={"stock":stock})
@@ -180,8 +184,12 @@ class StockMarket:
                 return stock
         
         if delete:
-            self.db.delete(f"_{user}", where={"stock":target})
-            self.erase_stock(target)
+            try:
+                self.db.execute(f'DELETE FROM _{user} WHERE stock="{target}"')
+                self.erase_stock(target)
+                
+            except:
+                pass
 
     def get_balance(self, user):
         data = self.db.select("users", where={"user":user}, size=1)
@@ -283,8 +291,10 @@ class StockMarket:
 
         for table in tables:
             if table.startswith("_"):
-                self.db.delete(table, where={"stock":stock})
-
+                try:
+                    self.db.delete(table, where={"stock":stock})
+                except:
+                    pass
     def leaderboard(self):
         users = self.db.select("users")
         stock_list = self.db.select("stock_list")

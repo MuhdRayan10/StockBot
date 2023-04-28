@@ -30,23 +30,24 @@ class Stock(commands.Cog):
     @tasks.loop(seconds=15)
     async def update_stocks(self):
         self.stockmarket.update_stocks()
-
+        """
+    
         data = self.stockmarket.get_stocks()
         embed = discord.Embed(title="Stock Market", description="The SRG Stock Market")
         embed.add_field(name="Stocks", value=data[0])
         embed.add_field(name="Prices", value=data[1])
         embed.add_field(name="Change", value=data[2])
-
+		
         # get the channel
         guild = self.bot.get_guild(880368659858616321)
         channel = guild.get_channel(1078325948006551642)
 
         try:
-            last_message = (await channel.history(limit=1))[0]
+            last_message = next(channel.history(limit=1))
             print(last_message)
             await last_message.edit(embed=embed)
         except Exception as e:
-            print(e)
+            print(e)"""
 
     @app_commands.command(name="add-stock", description="Create stock")
     async def add_stock(self, interaction, name: str, price: int):
