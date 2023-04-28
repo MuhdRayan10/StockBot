@@ -24,6 +24,10 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+
+    if len(message.content.split()) < 3:
+        return
+        
     db = Database("stocks")
     if db.if_exists("users", {"user":message.author.id}):
         db.execute(f"UPDATE users SET money=money+1 WHERE user={message.author.id}")
