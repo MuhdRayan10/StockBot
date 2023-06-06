@@ -139,6 +139,7 @@ class StockMarket:
 
         if self.db.if_exists("users", where={"user":user}):
             return -1
+        
         self.db.insert("users", (user, 5000))
 
         self.db.create_table(f"_{user}", {"stock":"TEXT", "price":INT, "count":INT})
@@ -316,14 +317,5 @@ class StockMarket:
         riches.sort(key=lambda x: x[1], reverse=True)
 
         return riches
-
-        
-
-        
-        
-
-        
-            
-        
 
 
