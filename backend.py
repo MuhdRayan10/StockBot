@@ -1,5 +1,6 @@
 import logging
 from colorlog import ColoredFormatter
+from gbm import new_price
 from easy_sqlite3 import *
 import random
 
@@ -70,7 +71,7 @@ class StockMarket:
 
         limit += 1000 if not limit else 0
 
-        price += random.choice(self.increase[limit])
+        price = new_price(price)
 
         if price <= 0:
             try:
