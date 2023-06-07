@@ -153,6 +153,13 @@ class Stock(commands.Cog):
         else:
             await interaction.response.send_message(f"Bought `{amount}` of the `{stock}` stock at the rate `{result[1]}`! Your balance is `{result[0]}`")
 
+    @app_commands.command(name="sell-all", description="Sell all your stocks")
+    async def sell_all(self, interaction, user:discord.Member):
+        balance = self.stockmarket.sell_all(user.id)
+
+        await interaction.response.send_message(f"You sold all your stocks... Your balance is now `${balance}`")
+
+
     @app_commands.command(name="balance", description="See your balance and trading account details.")
     async def balance(self, interaction, user:discord.Member=None):
         

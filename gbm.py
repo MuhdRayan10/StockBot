@@ -1,7 +1,7 @@
 import numpy as np
 
 mu = 0.1
-n = 1780
+n = 1780*2
 
 T = 10
 M = 1

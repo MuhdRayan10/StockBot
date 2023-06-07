@@ -76,7 +76,6 @@ class StockMarket:
 
         return new_price
 
-
     def update_stock_price(self, stock):
         stock_data = self.db.select("stock_list", where={"stock": stock}, size=1)
 
@@ -166,7 +165,16 @@ class StockMarket:
         self.db.insert("users", (user, 5000))
 
         self.db.create_table(f"_{user}", {"stock":"TEXT", "price":INT, "count":INT})
-        
+    
+    def sell_all(self, user):
+        user_stocks = self.db.select(f"_{user}")
+
+        for stock in user_stocks:
+            self.sell(user, stock[0], stock[2])
+
+        user_data = self.db.select("users", where={"user":user})
+        return user_data[0][1]
+
 
     def sell(self, user, stock, amount):
         data = self.db.select("stock_list", where={"stock": stock}, size=1)
