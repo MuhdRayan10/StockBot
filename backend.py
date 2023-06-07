@@ -1,8 +1,9 @@
 import logging
 from colorlog import ColoredFormatter
-from gbm import new_price
+from gbm import new_prices
 from easy_sqlite3 import *
 import random
+import json
 
 logger = logging.getLogger('stock-bot')
 stream = logging.StreamHandler()
@@ -55,6 +56,27 @@ class StockMarket:
         for data in stock_data:
             self.update_stock_price(data[0])
 
+    def get_stock_price(self, stock, price):
+        
+        with open("stock_prices.json", "r") as f:
+            data = json.load(f)
+
+        new_price = 0
+
+        if data.get(stock, None) is None:
+            data[stock] = new_prices(price)
+
+        new_price = data[stock].pop(0)
+
+        if len(data[stock]) == 0:
+            data[stock] = new_prices(new_price)
+
+        with open("stock_list.json", "w") as f:
+            json.dump(data, f)
+
+        return new_price
+
+
     def update_stock_price(self, stock):
         stock_data = self.db.select("stock_list", where={"stock": stock}, size=1)
 
@@ -71,7 +93,7 @@ class StockMarket:
 
         limit += 1000 if not limit else 0
 
-        price = new_price(price)
+        price = self.get_stock_price(stock, price)
 
         if price <= 0:
             try:

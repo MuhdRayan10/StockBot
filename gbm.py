@@ -1,20 +1,19 @@
 import numpy as np
 
 mu = 0.1
-n = 17280
+n = 1780
 
-T = 1
+T = 10
 M = 1
 
 sigma = 0.3
 
 dt = T/n
 
-def new_price(s0):
+def new_prices(s0):
     st = np.exp((mu - sigma**2/2) * dt + sigma * np.random.normal(0, np.sqrt(dt), size=(M, n))).T
     st = np.vstack([np.ones(M), st])
 
-    return round((s0 * st.cumprod(axis=0))[1][0], 2)
+    return [i[0] for i in (s0 * st.cumprod(axis=0))]
 
-
-
+print(new_prices(1))
